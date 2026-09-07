@@ -1,0 +1,7 @@
+{
+  "thresholds": [20, 10, 5],
+  "hysteresis": 3,
+  "recoverySamples": 2,
+  "pollSeconds": 15,
+  "staleSeconds": 90
+}

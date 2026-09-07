@@ -1,0 +1,50 @@
+{
+  "version": "codex-cli 0.153.4",
+  "capturedUtc": "2026-09-07T05:41:17.2947217Z",
+  "schemas": [
+    {
+      "file": "v1/InitializeParams.json",
+      "sha256": "6F0094BE9A65242EC779A40794CBD4FDFA32FCA1E45084A16ADFB50501D33EA2"
+    },
+    {
+      "file": "v1/InitializeResponse.json",
+      "sha256": "62AD689C2CB6379913C1D72749CFD8DE5089D35760214123518EB92EEF11ACC9"
+    },
+    {
+      "file": "v2/GetAccountRateLimitsResponse.json",
+      "sha256": "A28D4D0E9181A498C58D4AE3B6B49AAA6EE7A33C0C9F81C1AD0BFF223BFBBE3B"
+    },
+    {
+      "file": "v2/AccountRateLimitsUpdatedNotification.json",
+      "sha256": "C50DAA6ABB4723CA1EDFFDAE9D0D6CA452770669ED045FAE48D0FE9B20C6EA81"
+    },
+    {
+      "file": "v2/ThreadLoadedListParams.json",
+      "sha256": "42C2D124AB2B2998D84F0126DAAE2D32B0BF9C5A7EA7266E3A0814E5E37CF00D"
+    },
+    {
+      "file": "v2/ThreadLoadedListResponse.json",
+      "sha256": "1EA02C4710083E552B2A3A89B931B9049D5BF05B7DB46278B8352CF9FD80CD52"
+    },
+    {
+      "file": "v2/ThreadReadParams.json",
+      "sha256": "DFE040C6AC71D30795B8BE3F3FF232E66F362A37F883B491E5D1EA367F470DB4"
+    },
+    {
+      "file": "v2/ThreadTurnsListParams.json",
+      "sha256": "2A8B93D7D4437CC25E16A1DDE16D8DB3C338D39E16C5EECE2A56E943A21577D7"
+    },
+    {
+      "file": "v2/TurnSteerParams.json",
+      "sha256": "2E0CDCEA6A90D6C8BC584FDC2FF838E824754B1EEF0D2D16AA71BEC4276FEF44"
+    },
+    {
+      "file": "v2/HooksListParams.json",
+      "sha256": "07638C3A8A3690CF368FA92C7FF697FDD0132865E8C59D53F6E5789E5A260053"
+    },
+    {
+      "file": "v2/HooksListResponse.json",
+      "sha256": "891DD10EF7F78E59631FCE05FFF2BECDDB8004B3C0338DBBBD6B4F17EF1FA64F"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-07T05:45:26.195Z",
+  "turnStartRequests": 1,
+  "turnStartedNotifications": 1,
+  "completed": true,
+  "hookEvents": [
+    {
+      "id": "user-prompt-submit:1:C:\\Users\\rober\\.codex\\hooks.json",
+      "eventName": "userPromptSubmit",
+      "handlerType": "command",
+      "executionMode": "sync",
+      "scope": "turn",
+      "sourcePath": "C:\\Users\\rober\\.codex\\hooks.json",
+      "source": "user",
+      "displayOrder": 1,
+      "status": "completed",
+      "statusMessage": "Codex Fuel Guard",
+      "startedAt": 1788759929,
+      "completedAt": 1788759930,
+      "durationMs": 808,
+      "entries": [
+        {
+          "kind": "context",
+          "text": "[FUEL GUARD] Weekly allowance approximately 17% remaining. Continue current work, but avoid unnecessary scope expansion.\n[FUEL GUARD] SYNTHETIC DELIVERY TEST: 5-hour allowance approximately 20% remaining. Continue current work, but avoid unnecessary scope expansion. Test only; real quota is unchanged."
+        }
+      ]
+    }
+  ],
+  "output": "FUEL_GUARD_RECEIVED",
+  "codex": {
+    "userAgent": "Codex Desktop/0.153.4 (Windows 10.0.26200; x86_64) dumb (codex_fuel_guard; 0.1.0)",
+    "codexHome": "C:\\Users\\rober\\.codex",
+    "platformFamily": "windows",
+    "platformOs": "windows"
+  },
+  "windows": [
+    {
+      "remaining": 47,
+      "minutes": 300
+    },
+    {
+      "remaining": 14,
+      "minutes": 10080
+    }
+  ],
+  "threadId": "01a07a66-67b7-77f1-b99b-4c9a6b16696f",
+  "loaded": true,
+  "turnStatus": "completed"
+}
