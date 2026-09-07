@@ -1,0 +1,4 @@
+* text=auto
+# Preserve the installed generator's exact bytes so recorded SHA-256 values
+# remain valid when this Windows repository is checked out elsewhere.
+protocol/verified/*.json -text
