@@ -1,6 +1,6 @@
 # Environment repair checkpoint — 2026-09-09 UTC
 
-**Windows migration deployed; hook repair and reboot acceptance remain open.** The earlier completion claim proved delivery inside the build environment, not a Windows-started daemon reachable across execution environments. See the live migration update below for current state.
+**Windows migration and hooks deployed; reboot startup and this task's post-reboot delivery verified.** A second task passed before reboot; its post-reboot delivery repeat remains open. Sections below record historical checkpoints followed by the latest evidence.
 
 ## Confirmed cause
 
@@ -73,3 +73,11 @@ Next: in another existing Codex project ask its task to run `& "C:\AI\Projects\.
 ## Second task confirmed by user
 
 The user confirmed the requested second-task warning test worked. This is user-reported evidence; no additional process metadata was supplied. Re-reading the actual global AGENTS.md confirmed the canonical shared command is already present, with normal HTML markers, backticks, CODEX_THREAD_ID, and single Windows path separators. Escapes in the pasted conversation block are not present in the file. No global edit or hook re-trust was needed. The remaining acceptance step is the coordinated reboot test described above; pre-reboot multi-task success does not establish reboot reliability.
+
+## Coordinated reboot evidence
+
+The user rebooted and ran the read-only verify-reboot.ps1 from ordinary PowerShell. Boot epoch milliseconds: 1788927570500. Daemon creation: 1788927632372 (61.872 seconds later). PID 21984 ran the canonical shared cli.mjs daemon under Windows Node. Status was ready, stale=false, lastError=null, with fresh five-hour and weekly quota. The verification command never starts the daemon.
+
+This task subsequently attached successfully, queued a fresh synthetic event for its exact CODEX_THREAD_ID, and received the synthetic warning as PostToolUse developer context within this same turn. Canonical hook-health.json confirmed ok=true and warningReturned=true at 1788927704504. Authenticated status reported the same PID 21984. Read-only process/network inventory confirmed one Fuel Guard daemon, listener 127.0.0.1:44976 owned by PID 21984, one CodexFuelGuard.vbs Startup entry, and no matching Fuel Guard scheduled task. No process or startup mutation was performed for validation.
+
+The second task's persisted lastSeen in the supplied status was 1788927328030, before reboot. Its presence therefore proves persistence, not post-reboot connectivity or delivery. Ask that existing task to repeat attach/test-warning and confirm actual receipt; this is the sole remaining multi-task reboot acceptance check. One successful reboot does not establish reliability across every future App update or Windows configuration.
