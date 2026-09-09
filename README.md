@@ -1,6 +1,6 @@
 # Codex Fuel Guard
 
-**Environment repair validation:** the September 9 investigation confirmed different backing token and hook files at identical AppData paths in ordinary Windows versus Codex tool contexts. The installation now uses `C:\AI\Projects\.codex-fuel-guard-rober`. A coordinated reboot verified automatic Windows startup, fresh quota, and synthetic warning delivery in this task. Second-task delivery passed before reboot; its post-reboot repeat remains open. See [evidence and remaining check](docs/environment-repair.md).
+**Environment repair validated:** the September 9 investigation confirmed different backing token and hook files at identical AppData paths in ordinary Windows versus Codex tool contexts. The installation now uses `C:\AI\Projects\.codex-fuel-guard-rober`. A coordinated reboot verified automatic Windows startup, fresh quota, and synthetic warning delivery in this task; the user also confirmed successful attach and synthetic warning delivery in the second task after reboot. See [validation evidence and limitations](docs/environment-repair.md).
 
 A Windows-first, per-user quota watchdog for Codex. One local Node.js daemon reads real account limits through the installed `codex app-server`; trusted global hooks deliver compact warnings inside existing work. Normal monitoring uses **no model inference**.
 

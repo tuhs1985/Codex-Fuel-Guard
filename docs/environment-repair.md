@@ -1,6 +1,6 @@
 # Environment repair checkpoint — 2026-09-09 UTC
 
-**Windows migration and hooks deployed; reboot startup and this task's post-reboot delivery verified.** A second task passed before reboot; its post-reboot delivery repeat remains open. Sections below record historical checkpoints followed by the latest evidence.
+**Planned environment repair validation complete.** Windows migration and hooks are deployed; automatic reboot startup and this task's post-reboot delivery were verified directly. The user confirmed the second task's post-reboot attach and synthetic warning check succeeded. Sections below record historical checkpoints followed by the latest evidence.
 
 ## Confirmed cause
 
@@ -80,4 +80,6 @@ The user rebooted and ran the read-only verify-reboot.ps1 from ordinary PowerShe
 
 This task subsequently attached successfully, queued a fresh synthetic event for its exact CODEX_THREAD_ID, and received the synthetic warning as PostToolUse developer context within this same turn. Canonical hook-health.json confirmed ok=true and warningReturned=true at 1788927704504. Authenticated status reported the same PID 21984. Read-only process/network inventory confirmed one Fuel Guard daemon, listener 127.0.0.1:44976 owned by PID 21984, one CodexFuelGuard.vbs Startup entry, and no matching Fuel Guard scheduled task. No process or startup mutation was performed for validation.
 
-The second task's persisted lastSeen in the supplied status was 1788927328030, before reboot. Its presence therefore proves persistence, not post-reboot connectivity or delivery. Ask that existing task to repeat attach/test-warning and confirm actual receipt; this is the sole remaining multi-task reboot acceptance check. One successful reboot does not establish reliability across every future App update or Windows configuration.
+The second task's persisted lastSeen in the supplied status was 1788927328030, before reboot. Its presence alone proved persistence, not post-reboot connectivity or delivery, so a fresh attach/test-warning check was requested.
+
+The user subsequently confirmed that the second task attached and its synthetic warning check succeeded after reboot. This closes the final planned multi-task reboot acceptance check. Second-task receipt is user-reported evidence; no additional process metadata was supplied. The completed validation comprises 35 automated tests, ordinary Windows startup following a coordinated reboot, fresh real quota, and warning receipt in two Codex tasks without monitoring-created model turns. One successful reboot does not establish reliability across every future App update or Windows configuration.
