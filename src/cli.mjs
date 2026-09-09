@@ -7,6 +7,8 @@ import { home, readJson, atomic } from "./storage.mjs";
 import { request } from "./ipc.mjs";
 import { AppServer } from "./protocol.mjs";
 import { daemon } from "./daemon.mjs";
+import {ensureStarted,taskContext} from "./lifecycle.mjs";
+import {discoverCodex} from "./discovery.mjs";
 
 const args = process.argv.slice(2),
   command = args.shift() || "status";
@@ -15,27 +17,7 @@ const option = (name) => {
   return i < 0 ? undefined : args[i + 1];
 };
 const id = () => option("thread") || process.env.CODEX_THREAD_ID;
-async function start() {
-  try {
-    return await request("status");
-  } catch {}
-  fs.mkdirSync(home, { recursive: true });
-  const child = spawn(
-    process.execPath,
-    [fileURLToPath(import.meta.url), "daemon"],
-    { detached: true, windowsHide: true, stdio: "ignore", env: process.env },
-  );
-  child.unref();
-  for (let i = 0; i < 30; i++) {
-    await new Promise((r) => setTimeout(r, 100));
-    try {
-      return await request("status");
-    } catch {}
-  }
-  throw Error(
-    "Daemon did not start. Run fuel-guard daemon in a terminal to diagnose.",
-  );
-}
+async function start(){return ensureStarted({entry:fileURLToPath(import.meta.url)});}
 async function main() {
   if (command === "daemon") {
     await daemon();
@@ -73,7 +55,7 @@ async function main() {
         ok: true,
         warningReturned: !!result.hookSpecificOutput,
       });
-      if (result.hookSpecificOutput)
+      if (result.hookSpecificOutput || result.systemMessage)
         process.stdout.write(JSON.stringify(result));
     } catch (e) {
       try {
@@ -82,7 +64,8 @@ async function main() {
           ok: false,
           error: e.code || e.name || "HookError",
         });
-      } catch {} /* Fail open. Doctor reports bounded local diagnostics. */
+      } catch {} /* Fail open. */
+      if(metadata.event==="UserPromptSubmit")process.stdout.write(JSON.stringify({systemMessage:`Fuel Guard unavailable (${e.code||"HOOK_ERROR"}). Run Windows/task diagnostics; work may continue.`}));
     }
     return;
   }
@@ -122,14 +105,13 @@ async function main() {
     };
     try {
       result.daemon = await request("status");
-    } catch {
-      result.daemon = { running: false };
+    } catch(e) {
+      result.daemon = { reachable:false,code:e.code,error:e.message };
     }
-    const rpc = new AppServer({
-      executable:
-        readJson(path.join(home, "config.json"), {}).codexPath || "codex",
-    });
+    if(taskContext()){result.note="Task-side probe only; no quota reader is launched under the sandbox identity.";console.log(JSON.stringify(result,null,2));return;}
+    let rpc;
     try {
+      rpc=new AppServer({executable:discoverCodex({configured:readJson(path.join(home,"config.json"),{}).codexPath})});
       result.codex = await rpc.connect();
       const h = await rpc.rpc("hooks/list", { cwds: [process.cwd()] });
       result.hooks = h.data.map((x) => ({
@@ -151,9 +133,10 @@ async function main() {
     } catch (e) {
       result.protocolError = e.message;
     } finally {
-      rpc.close();
+      rpc?.close();
     }
   } else if (command === "install" || command === "uninstall") {
+    if(taskContext())throw Error("Install/uninstall from ordinary Windows PowerShell, not a Codex task environment.");
     const { install, uninstall } = await import("./install.mjs");
     if (command === "uninstall") {
       try {
@@ -163,6 +146,7 @@ async function main() {
       result = uninstall();
     } else
       result = install({
+        root:option("root")||home,
         source: path.resolve(
           path.dirname(fileURLToPath(import.meta.url)),
           "..",
@@ -175,6 +159,6 @@ async function main() {
   if (result) console.log(JSON.stringify(result, null, 2));
 }
 main().catch((e) => {
-  console.error(`Fuel Guard: ${e.message}`);
+  console.error(`Fuel Guard [${e.code||"ERROR"}]: ${e.message}`);
   process.exitCode = 1;
 });

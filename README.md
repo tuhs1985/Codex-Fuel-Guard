@@ -1,12 +1,14 @@
 # Codex Fuel Guard
 
+**Environment repair in progress:** the September 9 investigation confirmed different backing token and hook files at identical AppData paths in ordinary Windows versus Codex tool contexts. The Windows installation has migrated to `C:\AI\Projects\.codex-fuel-guard-rober`; task-side authenticated access now works. Automatic hook delivery and reboot/all-project acceptance remain open; see [confirmed cause and migration/reboot checklist](docs/environment-repair.md). Earlier live validation covered only the build environment.
+
 A Windows-first, per-user quota watchdog for Codex. One local Node.js daemon reads real account limits through the installed `codex app-server`; trusted global hooks deliver compact warnings inside existing work. Normal monitoring uses **no model inference**.
 
 The IOC was tested with Windows 11 x64, Node **24.17.0**, Codex CLI **0.153.4**, and native Codex App **26.901.6511.0**. A synthetic warning reached the running native App agent through `PostToolUse` developer context. See [validation](docs/validation.md).
 
 ## Install
 
-Requires Windows PowerShell, Node.js 22 or later, and an installed, signed-in Codex executable on PATH. No npm dependencies, API key, or administrator account is required.
+Requires Windows PowerShell, Node.js 22 or later, and an installed, signed-in Codex executable. Discovery checks a valid configured path, App-managed binaries, then PATH. Run installation/startup from ordinary Windows. No npm dependencies, API key, or administrator account is required. For this migrated machine, use the canonical paths in the environment repair notes; the legacy AppData examples below describe the original installation.
 
 ```powershell
 node --test test/*.test.mjs

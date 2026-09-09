@@ -35,7 +35,7 @@ test("daemon IPC restart, hook routing, deferral, duplicates, auth, failed Codex
   const env = { ...process.env, FUEL_GUARD_HOME: dir };
   let child;
   async function launch() {
-    child = spawn(process.execPath, ["src/cli.mjs", "daemon"], {
+    child = spawn(process.execPath, ["--input-type=module", "-e", "import {daemon} from './src/daemon.mjs'; await daemon(process.env.FUEL_GUARD_HOME,{isTask:()=>false});"], {
       env,
       windowsHide: true,
       stdio: "ignore",
@@ -109,14 +109,7 @@ test("daemon IPC restart, hook routing, deferral, duplicates, auth, failed Codex
         true,
       );
     }
-    assert.deepEqual(
-      await request(
-        "hook",
-        { id: "session-one", cwd: "C:/AI/A", event: "PostToolUse" },
-        dir,
-      ),
-      {},
-    );
+    assert.equal((await request("hook",{id:"session-one",cwd:"C:/AI/A",event:"PostToolUse"},dir)).hookSpecificOutput,undefined);
     await assert.rejects(request("attach", { id: "", cwd: "x" }, dir));
     const unauthorized = await new Promise((resolve) => {
       http.get({ ...connection(dir), path: "/" }, (r) => {
@@ -125,7 +118,7 @@ test("daemon IPC restart, hook routing, deferral, duplicates, auth, failed Codex
       });
     });
     assert.equal(unauthorized, 403);
-    const other = spawn(process.execPath, ["src/cli.mjs", "daemon"], {
+    const other = spawn(process.execPath, ["--input-type=module", "-e", "import {daemon} from './src/daemon.mjs'; await daemon(process.env.FUEL_GUARD_HOME,{isTask:()=>false});"], {
       env,
       windowsHide: true,
       stdio: "ignore",
@@ -134,14 +127,7 @@ test("daemon IPC restart, hook routing, deferral, duplicates, auth, failed Codex
     await request("stop", {}, dir);
     await new Promise((r) => child.on("exit", r));
     await launch();
-    assert.deepEqual(
-      await request(
-        "hook",
-        { id: "session-one", cwd: "C:/AI/A", event: "PostToolUse" },
-        dir,
-      ),
-      {},
-    );
+    assert.equal((await request("hook",{id:"session-one",cwd:"C:/AI/A",event:"PostToolUse"},dir)).hookSpecificOutput,undefined);
     assert.match(
       (
         await request(

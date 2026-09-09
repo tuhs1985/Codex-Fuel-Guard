@@ -1,12 +1,16 @@
 import http from "node:http";
 import path from "node:path";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual,createHash } from "node:crypto";
+import os from 'node:os';
 import { Guard, initialState, steerPending } from "./core.mjs";
 import { home, readJson, atomic, connection, secret } from "./storage.mjs";
 import { AppServer, localEndpoint } from "./protocol.mjs";
+import {discoverCodex} from './discovery.mjs';
+import {taskContext} from './lifecycle.mjs';
 
-export async function daemon(dir = home) {
-  const token = secret(dir),
+export async function daemon(dir = home,{isTask=taskContext}={}) {
+  if(isTask())throw Error('Run the daemon from ordinary Windows, not a Codex task/sandbox.');
+  const token = secret(dir,true),
     config = readJson(path.join(dir, "config.json"), {}),
     stateFile = path.join(dir, "state.json");
   let guard,
@@ -36,7 +40,7 @@ export async function daemon(dir = home) {
     if (stopping) return;
     try {
       if (!quota || quota.closed) {
-        quota = new AppServer({ executable: config.codexPath || "codex" });
+        quota = new AppServer({ executable: discoverCodex({configured:config.codexPath}) });
         info = await quota.connect();
         quota.on("notification", (method, p) => {
           if (method === "account/rateLimits/updated")
@@ -45,8 +49,8 @@ export async function daemon(dir = home) {
       }
       const seq = ++sequence;
       ingest(await quota.rpc("account/rateLimits/read"), seq);
-    } catch {
-      lastError = "Codex quota read unavailable; run fuel-guard doctor";
+    } catch(e) {
+      lastError = `${e.code||"QUOTA_READER_FAILED"}: quota unavailable; run Windows doctor`;
       quota?.close();
       quota = null;
     }
@@ -106,6 +110,8 @@ export async function daemon(dir = home) {
       case "status":
         return {
           running: true,
+          installation:dir,
+          health:lastError?"quota-reader-unhealthy":(!lastRead?"initializing":"ready"),
           pid: process.pid,
           version: "0.1.0",
           codex: info?.userAgent,
@@ -152,7 +158,7 @@ export async function daemon(dir = home) {
           a.endpoint || null,
         );
         save();
-        return { attached: a.id, mode: a.endpoint ? "steer" : "hook" };
+        return { attached: a.id, mode: a.endpoint ? "steer" : "hook",health:lastError?"quota-reader-unhealthy":(!lastRead?"initializing":"ready"),lastError };
       }
       case "hook": {
         if (!["PostToolUse", "UserPromptSubmit"].includes(a.event)) return {};
@@ -164,6 +170,10 @@ export async function daemon(dir = home) {
           prior?.endpoint || null,
         );
         const events = guard.pending(a.id);
+        const session=guard.state.sessions[a.id];
+        const unhealthy=!!lastError||!lastRead||Date.now()-lastRead>guard.config.staleSeconds*1000;
+        const healthNotice=unhealthy&&!session.healthNotified;
+        session.healthNotified=unhealthy;
         const synthetic = readJson(path.join(dir, "synthetic.json"), null);
         const test =
           synthetic &&
@@ -181,7 +191,7 @@ export async function daemon(dir = home) {
           ...events.map((x) => x.text),
           ...(test ? [synthetic.text] : []),
         ].join("\n");
-        return text
+        const result=text
           ? {
               hookSpecificOutput: {
                 hookEventName: a.event,
@@ -189,6 +199,8 @@ export async function daemon(dir = home) {
               },
             }
           : {};
+        if(healthNotice)result.systemMessage="Fuel Guard quota reader is unhealthy or initializing; protection is not confirmed. Run Windows doctor. Work may continue.";
+        return result;
       }
       case "check": {
         if (!guard.state.sessions[a.id]) throw Error("Session not attached");
@@ -222,6 +234,11 @@ export async function daemon(dir = home) {
   }
   let chain = Promise.resolve();
   const server = http.createServer((req, res) => {
+    res.setHeader("x-fuel-guard","1");
+    if(req.method==='GET'&&req.url==='/health'){
+      res.setHeader('content-type','application/json');
+      res.end(JSON.stringify({service:'codex-fuel-guard',pid:process.pid,owner:os.userInfo().username,installation:dir,tokenFingerprint:createHash('sha256').update(token).digest('hex'),health:lastError?'quota-reader-unhealthy':(!lastRead?'initializing':'ready')}));return;
+    }
     const received = Buffer.from(
         String(req.headers["x-fuel-guard-token"] || ""),
       ),

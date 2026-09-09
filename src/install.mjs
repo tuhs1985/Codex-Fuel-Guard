@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
-import { home, atomic, readJson } from "./storage.mjs";
+import { home, atomic, readJson, secret } from "./storage.mjs";
 const begin = "<!-- CODEX-FUEL-GUARD:BEGIN -->",
   end = "<!-- CODEX-FUEL-GUARD:END -->";
 const statusMessage = "Codex Fuel Guard";
@@ -78,7 +78,8 @@ export function install(options = {}) {
     source = options.source,
     node = options.node || process.execPath,
     integratePath = options.integratePath ?? process.platform === "win32";
-  const previous = readJson(p.manifest, null);
+  const previous = readJson(p.manifest, null) || options.previousManifest;
+  p.bridge=options.bridge || previous?.bridge || path.join(p.root,"app","hook.ps1");
   if (
     fs.existsSync(p.root) &&
     !previous &&
@@ -93,13 +94,14 @@ export function install(options = {}) {
             "backups",
             "app",
             "bin",
+            "visibility-probe.txt",
           ].includes(x),
       )
   )
     throw Error("Install directory contains unowned files");
   const cli = path.join(p.root, "app", "src", "cli.mjs"),
-    cmd = `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${path.join(p.root, "app", "hook.ps1")}"`;
-  const block = `${begin}\nFuel Guard is installed globally. At the start of substantive work run \`& "${path.join(p.root, "bin", "fuel-guard.cmd")}" attach\` (uses CODEX_THREAD_ID; never guess a session). It starts one daemon idempotently. Trusted global hooks deliver warnings at existing tool/prompt boundaries. Treat [FUEL GUARD] as quota/checkpoint guidance. If unavailable, report once and continue working. Project instructions may add detail.\n${end}`;
+    cmd = (options.canonicalHooks ? null : previous?.hookCommand) || `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${p.bridge}"`;
+  const block = `${begin}\nFuel Guard is installed globally. At the start of substantive work run \`& "${path.join(p.root, "bin", "fuel-guard.cmd")}" attach\` (uses CODEX_THREAD_ID; never guess a session). It verifies the single Windows-started daemon; a task must not spawn a sandbox daemon. Trusted global hooks deliver warnings at existing tool/prompt boundaries. Treat [FUEL GUARD] as quota/checkpoint guidance. If unavailable, report once and continue working. Project instructions may add detail.\n${end}`;
   const beforeAgents = bytes(p.agents),
     beforeHooks = bytes(p.hooks),
     beforeStartup = bytes(p.launcher);
@@ -144,7 +146,7 @@ export function install(options = {}) {
     .filter((x) => x.endsWith(".mjs"));
   const ownedFiles = [
     ...appNames.map((name) => path.join(p.root, "app", "src", name)),
-    path.join(p.root, "app", "hook.ps1"),
+    p.bridge,
     path.join(bin, "fuel-guard.cmd"),
     p.manifest,
   ];
@@ -157,7 +159,7 @@ export function install(options = {}) {
         path.join(p.root, "app", "src", name),
       );
     write(
-      path.join(p.root, "app", "hook.ps1"),
+      p.bridge,
       `$ErrorActionPreference = 'Stop'\r\n$env:FUEL_GUARD_HOME = ${quote(p.root)}\r\n[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)\r\n$OutputEncoding = [System.Text.UTF8Encoding]::new($false)\r\ntry { [Console]::In.ReadToEnd() | & ${quote(node)} ${quote(cli)} hook } catch { exit 0 }\r\n`,
     );
     write(
@@ -191,6 +193,7 @@ export function install(options = {}) {
         : (beforeStartup?.toString("base64") ?? null),
       backup,
     });
+    secret(p.root,true);
   } catch (e) {
     restore(p.agents, beforeAgents);
     restore(p.hooks, beforeHooks);
@@ -275,6 +278,7 @@ export function uninstall(options = {}) {
         .join(";"),
     );
   }
+  if(m.bridge && m.bridge!==path.join(p.root,"app","hook.ps1") && text(m.bridge).includes(m.root)){fs.unlinkSync(m.bridge);}
   // Delete only explicitly owned files; retain backups and unknown user additions.
   const owned = [
     "ipc-token",
@@ -284,6 +288,7 @@ export function uninstall(options = {}) {
     "install-manifest.json",
     "bin/fuel-guard.cmd",
     "app/hook.ps1",
+    "startup.log",
   ];
   for (const name of owned) {
     const f = path.join(p.root, name);
@@ -297,6 +302,8 @@ export function uninstall(options = {}) {
     "ipc.mjs",
     "protocol.mjs",
     "storage.mjs",
+    "lifecycle.mjs",
+    "discovery.mjs",
   ]) {
     const f = path.join(p.root, "app", "src", name);
     if (fs.existsSync(f)) fs.unlinkSync(f);

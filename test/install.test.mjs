@@ -3,7 +3,23 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import {readJson} from '../src/storage.mjs';
 import { install, uninstall, managed } from "../src/install.mjs";
+
+test('migration keeps trusted hook definitions and config bytes while redirecting bridge and startup',()=>{
+ const o=fixture();install(o);
+ const hooks=fs.readFileSync(path.join(o.codexHome,'hooks.json'));
+ const config=path.join(o.codexHome,'config.toml');fs.writeFileSync(config,'# existing trust/settings\n');
+ const previous=readJson(path.join(o.root,'install-manifest.json'));
+ const root=path.join(path.dirname(o.root),'shared-root');
+ const migrated={...o,root,previousManifest:previous,bridge:path.join(o.root,'app','hook.ps1')};
+ install(migrated);
+ assert.deepEqual(fs.readFileSync(path.join(o.codexHome,'hooks.json')),hooks);
+ assert.equal(fs.readFileSync(config,'utf8'),'# existing trust/settings\n');
+ assert.ok(fs.readFileSync(migrated.bridge,'utf8').includes(root));
+ assert.ok(fs.readFileSync(path.join(o.startup,'CodexFuelGuard.vbs'),'utf8').includes(root));
+ const once=fs.readFileSync(path.join(o.codexHome,'AGENTS.md'));install(migrated);assert.deepEqual(fs.readFileSync(path.join(o.codexHome,'AGENTS.md')),once);
+});
 function fixture() {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "fuel-guard-test-"));
   const o = {
@@ -16,6 +32,20 @@ function fixture() {
   fs.mkdirSync(o.codexHome);
   return o;
 }
+
+test('canonical hook repair replaces owned commands once and preserves trust config',()=>{
+ const o=fixture();install(o);
+ const config=path.join(o.codexHome,'config.toml');fs.writeFileSync(config,'# trust is owned by Codex\n');
+ const bridge=path.join(o.root,'canonical','hook.ps1');
+ install({...o,bridge,canonicalHooks:true});
+ install({...o,bridge,canonicalHooks:true});
+ const hooks=readJson(path.join(o.codexHome,'hooks.json'));
+ for(const event of ['PostToolUse','UserPromptSubmit']){
+  assert.equal(hooks.hooks[event].length,1);
+  assert.ok(hooks.hooks[event][0].hooks[0].command.includes(bridge));
+ }
+ assert.equal(fs.readFileSync(config,'utf8'),'# trust is owned by Codex\n');
+});
 test("installer twice, existing instructions/hooks preserved, exact uninstall restoration", () => {
   const o = fixture();
   const a = path.join(o.codexHome, "AGENTS.md"),
