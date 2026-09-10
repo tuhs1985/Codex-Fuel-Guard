@@ -24,7 +24,9 @@ test("daemon IPC restart, hook routing, deferral, duplicates, auth, failed Codex
     },
   });
   atomic(path.join(dir, "state.json"), g.state);
-  atomic(path.join(dir, "config.json"), { codexPath: "does-not-exist.exe" });
+  // A valid non-Codex executable fails locally, without discovery falling back
+  // to the real signed-in Codex installation.
+  atomic(path.join(dir, "config.json"), { codexPath: process.execPath });
   install({
     root: dir,
     codexHome: path.join(dir, "test-codex"),
@@ -53,6 +55,9 @@ test("daemon IPC restart, hook routing, deferral, duplicates, auth, failed Codex
   try {
     await launch();
     await request("attach", { id: "session-one", cwd: "C:/AI/A" }, dir);
+    const shared = await request("attach", { id: "session-one", cwd: "C:/worker" }, dir);
+    assert.equal(shared.sharedDirectory, true);
+    assert.equal(shared.deliveryIdentity, "hook-payload");
     await request("attach", { id: "session-two", cwd: "C:/Project/B" }, dir);
     assert.deepEqual(
       await request(
@@ -68,6 +73,9 @@ test("daemon IPC restart, hook routing, deferral, duplicates, auth, failed Codex
       dir,
     );
     assert.match(first.hookSpecificOutput.additionalContext, /19%/);
+    const worker = await request("hook", {id:"worker-one",sessionId:"session-one",cwd:"C:/worker",event:"PostToolUse"},dir);
+    assert.match(worker.hookSpecificOutput.additionalContext,/19%/);
+    await assert.rejects(request("hook", {id:"worker-one",sessionId:"session-two",cwd:"C:/worker",event:"PostToolUse"},dir),/different session/);
     if (process.platform === "win32") {
       const bridge = spawn(
         "powershell.exe",
@@ -95,6 +103,7 @@ test("daemon IPC restart, hook routing, deferral, duplicates, auth, failed Codex
         "\uFEFF" +
           JSON.stringify({
             session_id: "bridge-session",
+            agent_id: "bridge-worker",
             cwd: "C:/AI/A",
             hook_event_name: "PostToolUse",
           }),
@@ -108,6 +117,9 @@ test("daemon IPC restart, hook routing, deferral, duplicates, auth, failed Codex
         JSON.parse(fs.readFileSync(path.join(dir, "hook-health.json"))).ok,
         true,
       );
+      const identityState = await request("status", {}, dir);
+      assert.equal(identityState.sessions.find(x=>x.id==="bridge-worker").hookSessionId,"bridge-session");
+      assert.equal(identityState.sessions.some(x=>x.id==="bridge-session"),false);
     }
     assert.equal((await request("hook",{id:"session-one",cwd:"C:/AI/A",event:"PostToolUse"},dir)).hookSpecificOutput,undefined);
     await assert.rejects(request("attach", { id: "", cwd: "x" }, dir));
@@ -139,6 +151,7 @@ test("daemon IPC restart, hook routing, deferral, duplicates, auth, failed Codex
       /19%/,
     );
     await request("synthetic", { id: "session-one" }, dir);
+    assert.equal((await request("hook", {id:"worker-one",sessionId:"session-one",cwd:"C:/worker",event:"PostToolUse"},dir)).hookSpecificOutput,undefined);
     assert.deepEqual(
       await request(
         "hook",

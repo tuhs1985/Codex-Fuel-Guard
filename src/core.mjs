@@ -1,4 +1,24 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
+
+export function validSessionId(id) {
+  return typeof id === "string" && /^[a-zA-Z0-9_-]{8,128}$/.test(id) &&
+    !["__proto__", "constructor", "prototype"].includes(id);
+}
+export function sameDirectory(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  // Lexical Windows equivalence only; never use paths to discover an identity.
+  if (path.win32.isAbsolute(a) && path.win32.isAbsolute(b))
+    return path.win32.normalize(a).replace(/[\\/]+$/, "").toLowerCase() ===
+      path.win32.normalize(b).replace(/[\\/]+$/, "").toLowerCase();
+  return a === b;
+}
+export function hookIdentity(event) {
+  if (!validSessionId(event.session_id)) throw Error("Invalid hook session_id");
+  if (event.agent_id != null && !validSessionId(event.agent_id))
+    throw Error("Invalid hook agent_id; refusing parent fallback");
+  return { id: event.agent_id ?? event.session_id, sessionId: event.session_id };
+}
 
 export const defaults = {
   thresholds: [20, 10, 5],
@@ -164,19 +184,32 @@ export class Guard {
     }
     return events;
   }
-  attach(id, cwd, mode = "hook", endpoint = null, now = Date.now()) {
-    if (typeof id !== "string" || !/^[a-zA-Z0-9_-]{8,128}$/.test(id))
+  attach(id, cwd, mode = "hook", endpoint = null, now = Date.now(), hookSessionId = null) {
+    if (!validSessionId(id))
       throw Error(
         "Explicit valid thread/session id required; cwd guessing is disabled",
       );
     if (!["hook", "steer"].includes(mode)) throw Error("Invalid delivery mode");
+    if (typeof cwd !== "string" || !cwd.trim() || cwd.length > 4096)
+      throw Error("Explicit working directory required");
+    if (hookSessionId !== null && !validSessionId(hookSessionId))
+      throw Error("Invalid hook session identity");
     const previous = this.state.sessions[id];
-    if (previous && previous.cwd !== cwd)
-      throw Error("Thread already registered with another cwd");
+    if (previous?.hookSessionId && hookSessionId && previous.hookSessionId !== hookSessionId)
+      throw Error("Hook identity already bound to a different session; refusing delivery");
+    if (previous && (previous.mode === "steer" || mode === "steer")) {
+      if (!sameDirectory(previous.cwd, cwd)) throw Error("Steering thread cwd mismatch");
+      if (previous.mode !== mode || previous.endpoint !== endpoint)
+        throw Error("Delivery binding mismatch; detach explicitly before changing it");
+    }
     this.state.sessions[id] = {
       ...previous,
       id,
-      cwd,
+      // cwd is observation metadata for hook delivery, not a routing key.
+      // An inherited shell ID must not overwrite the original registration.
+      cwd: previous?.cwd ?? cwd,
+      lastCwd: cwd,
+      hookSessionId: previous?.hookSessionId ?? hookSessionId,
       mode,
       endpoint,
       lastSeen: now,

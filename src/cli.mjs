@@ -9,6 +9,7 @@ import { AppServer } from "./protocol.mjs";
 import { daemon } from "./daemon.mjs";
 import {ensureStarted,taskContext} from "./lifecycle.mjs";
 import {discoverCodex} from "./discovery.mjs";
+import {hookIdentity} from "./core.mjs";
 
 const args = process.argv.slice(2),
   command = args.shift() || "status";
@@ -32,10 +33,11 @@ async function main() {
         if (input.length > 4 * 1024 * 1024) throw Error("Hook input too large");
       }
       const event = JSON.parse(input.replace(/^\uFEFF/, "")); // Never retain prompts, tool input/output, or transcript paths.
+      const identity = hookIdentity(event);
       metadata = {
         ...metadata,
         event: event.hook_event_name,
-        id: event.agent_id || event.session_id,
+        ...identity,
         cwd: event.cwd,
       };
       if (!event.session_id || !event.cwd) return;
@@ -43,7 +45,7 @@ async function main() {
       const result = await request(
         "hook",
         {
-          id: event.agent_id || event.session_id,
+          ...identity,
           cwd: event.cwd,
           event: event.hook_event_name,
         },

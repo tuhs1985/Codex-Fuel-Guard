@@ -2,7 +2,7 @@ import http from "node:http";
 import path from "node:path";
 import { timingSafeEqual,createHash } from "node:crypto";
 import os from 'node:os';
-import { Guard, initialState, steerPending } from "./core.mjs";
+import { Guard, initialState, steerPending, sameDirectory } from "./core.mjs";
 import { home, readJson, atomic, connection, secret } from "./storage.mjs";
 import { AppServer, localEndpoint } from "./protocol.mjs";
 import {discoverCodex} from './discovery.mjs';
@@ -80,7 +80,7 @@ export async function daemon(dir = home,{isTask=taskContext}={}) {
           threadId: session.id,
           includeTurns: false,
         });
-        if (result.thread.cwd !== session.cwd) continue;
+        if (!sameDirectory(result.thread.cwd, session.cwd)) continue;
         const turns = await link.rpc("thread/turns/list", {
           threadId: session.id,
           limit: 1,
@@ -131,7 +131,7 @@ export async function daemon(dir = home,{isTask=taskContext}={}) {
             }),
           ),
           sessions: Object.values(guard.state.sessions).map(
-            ({ id, cwd, mode, lastSeen }) => ({ id, cwd, mode, lastSeen }),
+            ({ id, cwd, lastCwd, hookSessionId, mode, lastSeen }) => ({ id, cwd, lastCwd, hookSessionId, mode, lastSeen }),
           ),
         };
       case "attach": {
@@ -146,7 +146,7 @@ export async function daemon(dir = home,{isTask=taskContext}={}) {
               threadId: a.id,
               includeTurns: false,
             });
-            if (r.thread.cwd !== a.cwd) throw Error("Thread cwd mismatch");
+            if (!sameDirectory(r.thread.cwd, a.cwd)) throw Error("Thread cwd mismatch");
           } finally {
             link.close();
           }
@@ -158,7 +158,7 @@ export async function daemon(dir = home,{isTask=taskContext}={}) {
           a.endpoint || null,
         );
         save();
-        return { attached: a.id, mode: a.endpoint ? "steer" : "hook",health:lastError?"quota-reader-unhealthy":(!lastRead?"initializing":"ready"),lastError };
+        return { attached: a.id, mode: a.endpoint ? "steer" : "hook", deliveryIdentity: a.endpoint ? "verified-thread" : "hook-payload", sharedDirectory: !sameDirectory(guard.state.sessions[a.id].cwd,a.cwd), health:lastError?"quota-reader-unhealthy":(!lastRead?"initializing":"ready"),lastError };
       }
       case "hook": {
         if (!["PostToolUse", "UserPromptSubmit"].includes(a.event)) return {};
@@ -168,6 +168,8 @@ export async function daemon(dir = home,{isTask=taskContext}={}) {
           a.cwd,
           prior?.mode || "hook",
           prior?.endpoint || null,
+          Date.now(),
+          a.sessionId ?? a.id,
         );
         const events = guard.pending(a.id);
         const session=guard.state.sessions[a.id];

@@ -124,7 +124,9 @@ test("multiple project sessions independently receive and idle sessions defer", 
   assert.equal(g.pending("session-two", now).length, 1);
   assert.deepEqual(g.pending("unknown", now), []);
   assert.throws(() => g.attach("", "x"));
-  assert.throws(() => g.attach("session-one", "wrong"));
+  g.attach("session-one", "C:/worker");
+  assert.equal(g.pending("session-one", now).length, 0);
+  assert.equal(g.pending("session-two", now).length, 1);
 });
 test("stale and expired warnings deferred; recovery invalidates pending", () => {
   const g = new Guard();

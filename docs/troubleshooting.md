@@ -23,3 +23,6 @@ Run the absolute launcher when PATH has not refreshed:
 `check` explicitly retrieves pending warnings for an attached session as a manual fallback. Do not create a model-driven polling loop around it. Use `status` for a local percentage display. `test-warning --thread ID` is an opt-in two-minute synthetic delivery check, never an automatic recurring action.
 
 Hook health is a last-event record, not an inference receipt. The live validation includes model acknowledgment and native developer-context receipt separately. Guard errors should be reported once at substantive-session startup; they should never repeatedly interrupt the task.
+# Cross-directory registration
+
+If a worker reports “Thread already registered with another cwd”, see [registration identity repair](registration-identity.md). The corrected runtime allows hook-mode attachment across directories without replacing session identity or clearing warning acknowledgements. The documented runtime-only update preserves startup and trusted hook commands. A distinct hook agent ID receives independent warnings; hooks that expose only a shared parent ID cannot promise separate parent/worker delivery.
