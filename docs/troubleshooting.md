@@ -25,4 +25,6 @@ Run the absolute launcher when PATH has not refreshed:
 Hook health is a last-event record, not an inference receipt. The live validation includes model acknowledgment and native developer-context receipt separately. Guard errors should be reported once at substantive-session startup; they should never repeatedly interrupt the task.
 # Cross-directory registration
 
+For `connect EACCES` or `EPERM` from a restricted tool shell, see [sandbox access diagnostics and hook-aware attachment](sandbox-hook-access.md). A healthy Windows daemon and working hooks can coexist with blocked direct tool access. Do not reinstall or launch another daemon for this error.
+
 If a worker reports “Thread already registered with another cwd”, see [registration identity repair](registration-identity.md). The corrected runtime allows hook-mode attachment across directories without replacing session identity or clearing warning acknowledgements. The documented runtime-only update preserves startup and trusted hook commands. A distinct hook agent ID receives independent warnings; hooks that expose only a shared parent ID cannot promise separate parent/worker delivery.

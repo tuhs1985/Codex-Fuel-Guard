@@ -118,6 +118,10 @@ test("daemon IPC restart, hook routing, deferral, duplicates, auth, failed Codex
         true,
       );
       const identityState = await request("status", {}, dir);
+      const receipt=JSON.parse(fs.readFileSync(path.join(dir,'hook-receipts','bridge-worker.json')));
+      assert.equal(receipt.id,'bridge-worker');
+      assert.equal(receipt.ok,true);
+      assert.equal(receipt.installation,path.resolve(dir));
       assert.equal(identityState.sessions.find(x=>x.id==="bridge-worker").hookSessionId,"bridge-session");
       assert.equal(identityState.sessions.some(x=>x.id==="bridge-session"),false);
     }

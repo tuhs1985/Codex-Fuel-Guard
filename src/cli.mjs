@@ -7,9 +7,16 @@ import { home, readJson, atomic } from "./storage.mjs";
 import { request } from "./ipc.mjs";
 import { AppServer } from "./protocol.mjs";
 import { daemon } from "./daemon.mjs";
-import {ensureStarted,taskContext} from "./lifecycle.mjs";
+import {ensureStarted,taskContext,attachWithHookFallback,hookObservation} from "./lifecycle.mjs";
 import {discoverCodex} from "./discovery.mjs";
-import {hookIdentity} from "./core.mjs";
+import {hookIdentity,validSessionId} from "./core.mjs";
+
+function recordHook(metadata) {
+  const receipt={...metadata,installation:path.resolve(home),at:Date.now()};
+  // Per-ID receipts prevent another active chat from overwriting the evidence.
+  if(validSessionId(receipt.id))atomic(path.join(home,'hook-receipts',`${receipt.id}.json`),receipt);
+  atomic(path.join(home,'hook-health.json'),receipt);
+}
 
 const args = process.argv.slice(2),
   command = args.shift() || "status";
@@ -52,7 +59,7 @@ async function main() {
         home,
         1200,
       );
-      atomic(path.join(home, "hook-health.json"), {
+      recordHook({
         ...metadata,
         ok: true,
         warningReturned: !!result.hookSpecificOutput,
@@ -61,7 +68,7 @@ async function main() {
         process.stdout.write(JSON.stringify(result));
     } catch (e) {
       try {
-        atomic(path.join(home, "hook-health.json"), {
+        recordHook({
           ...metadata,
           ok: false,
           error: e.code || e.name || "HookError",
@@ -74,17 +81,12 @@ async function main() {
   let result;
   if (command === "start") result = await start();
   else if (command === "attach") {
-    await start();
-    result = await request(
-      "attach",
-      {
+    result = await attachWithHookFallback({
+        dir:home,start,
         id: id(),
         cwd: option("cwd") || process.cwd(),
         endpoint: option("endpoint"),
-      },
-      home,
-      15000,
-    );
+      });
   } else if (command === "check") result = await request("check", { id: id() });
   else if (command === "detach") result = await request("detach", { id: id() });
   else if (command === "test-warning") {
@@ -104,6 +106,7 @@ async function main() {
       node: process.version,
       home,
       hookHealth: readJson(path.join(home, "hook-health.json"), null),
+      currentSessionHook:hookObservation(home,id()),
     };
     try {
       result.daemon = await request("status");
